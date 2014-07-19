@@ -19,14 +19,14 @@
 Adafruit_Trellis T[4];
 OONTZ            oontz(&T[0], &T[1], &T[2], &T[3]);
 const uint8_t    addr[] = { 0x70, 0x71,
-    0x72, 0x73 };
+                            0x72, 0x73 };
 #else
 // A HELLA OONTZ has eight Trellis boards...
 Adafruit_Trellis T[8];
 OONTZ            oontz(&T[0], &T[1], &T[2], &T[3],
                        &T[4], &T[5], &T[6], &T[7]);
 const uint8_t    addr[] = { 0x70, 0x71, 0x72, 0x73,
-    0x74, 0x75, 0x76, 0x77 };
+                            0x74, 0x75, 0x76, 0x77 };
 #endif // HELLA
 
 // For this example, MIDI note numbers are simply centered based on
@@ -87,7 +87,7 @@ int8_t (*arpCollection[])[ARP_NOTES][2] = {
     &arpD
 };
 
-uint8_t arpCount = sizeof(arpCollection) / sizeof(int8_t) / ARP_NOTES;
+uint8_t arpCount = sizeof(arpCollection) / sizeof(arpCollection[0]);
 
 int8_t (*arp)[ARP_NOTES][2] = &(*arpCollection)[0];
 
@@ -106,8 +106,7 @@ boolean pressedButtonIndex[N_BUTTONS] = {false};   //button being virtually pres
 uint8_t arpSeqIndex[N_BUTTONS] = {INVALID_BUTTON_INDEX};
 uint8_t arpButtonIndex[N_BUTTONS] = {INVALID_BUTTON_INDEX};   //button being virtually pressed for each sustained button press
 
-// Encoder on pins 4,5 sets tempo.  Optional, not present in
-// standard OONTZ, but won't affect things if unconnected.
+// Encoders for tempo and arpeggio selection
 enc tempoEncoder(8, 9);
 enc arpEncoder(4, 5);
 unsigned int  bpm          = 240;          // Tempo
@@ -136,8 +135,8 @@ void setup() {
     tempoEncoder.setBounds(60 * 4, 480 * 4 + 3); // Set tempo limits
     tempoEncoder.setValue(bpm * 4);              // *4's for encoder detents
     
-//    arpEncoder.setBounds(0, 255);
-//    arpEncoder.setValue(0);
+    arpEncoder.setBounds(0, arpCount * 4 - 1, true);
+    arpEncoder.setValue(0);
 }
 
 
@@ -186,7 +185,7 @@ void loop() {
             beatInterval = 60000L / bpm;
             
             //Set current arp notes
-            int16_t arpIndex = arpEncoder.getValue() % arpCount;
+            int16_t arpIndex = arpEncoder.getValue() / 4;
             arp = &(*arpCollection)[arpIndex];
         }
         
