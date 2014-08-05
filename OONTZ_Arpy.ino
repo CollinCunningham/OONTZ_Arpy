@@ -4,8 +4,9 @@
 //
 // For HELLA OONTZ change HELLA value to 1 (line 20)
 // For external MIDI clock sync change EXT_CLOCK value to 1 (line 21)
+// Scale can be chosen by specifying a mode on line 129
 //
-// Optional:
+// Optional hardware:
 //      Pattern control - connect rotary encoder to pins 4 & 5
 //      Tempo control   - connect rotary encoder to pins 8 & 9
 //
@@ -18,8 +19,8 @@ void setup();   // Added to avoid Arduino IDE #ifdef bug
 
 #define LED       13 // Pin for heartbeat LED (shows code is working)
 #define CHANNEL   1  // MIDI channel number
-#define HELLA     0  // 0 for standard OONTZ, 1 for HELLA OONTZ
-#define EXT_CLOCK 0  // 0 for internal clock, 1 for external
+#define HELLA     1  // 0 for standard OONTZ, 1 for HELLA OONTZ
+#define EXT_CLOCK 1  // 0 for internal clock, 1 for external
 
 #if HELLA
 Adafruit_Trellis T[8];
@@ -126,7 +127,7 @@ uint8_t chromatic[12]   = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11 },
         aeolian[12]     = { 0, 0, 2, 3, 3, 5, 5, 7, 8, 8,10,10 },
         locrian[12]     = { 0, 1, 1, 3, 3, 5, 6, 6, 8, 8,10,10 };
 
-uint8_t (*scale)[12]    = &locrian;    // Chosen scale
+uint8_t (*scale)[12]    = &chromatic;    // Chosen scale
 
 uint8_t firstNote = 36,  // First note, upper left of grid
         colIntvl  = 2,   // Semitones between each column
@@ -142,8 +143,9 @@ enc arpEncoder(4, 5);
 unsigned int  bpm          = 320;          // Tempo
 unsigned long beatInterval = 60000L / bpm, // ms/beat
               prevArpTime  = 0L;
-uint8_t       arpVelocityMax  = 102,
-              arpVelocityMin  = 65;
+//uint8_t       arpVelocityMax  = 102,
+//              arpVelocityMin  = 65;
+
 
 void setup(){
     
@@ -188,6 +190,10 @@ void setup(){
     
     //Set up the note for the grid
     writePitchMap();
+
+#if EXT_CLOCK
+    usbMIDI.setHandleRealTimeSystem(handleRealTimeSystem);
+#endif
     
 }
 
@@ -224,7 +230,7 @@ void loop(){
             }
         }
         
-        //iterate array, play arp sequence for pressed buttons
+        // Iterate array, play arp sequence for pressed buttons
         
 #if EXT_CLOCK
         // EXTERNAL CLOCK
@@ -233,22 +239,15 @@ void loop(){
         
 #else
         // INTERNAL CLOCK
-            if ((t - prevArpTime) >= beatInterval) {
-                
-                for (uint8_t i=0; i < N_BUTTONS; i++) {
-                    if (pressedButtonIndex[i]) {
-                        playArp(i);
-                    }
-                }
-                prevArpTime = t;
-            }
-            
-            //Set Tempo from encoder value
-            bpm          = tempoEncoder.getValue() / 4; // Div for encoder detents
-            beatInterval = 60000L / bpm;
+        if ((t - prevArpTime) >= beatInterval) {
+            respondToPresses();
+            prevArpTime = t;
+        }
+        
+        //Set Tempo from encoder value
+        bpm          = tempoEncoder.getValue() / 4; // Div for encoder detents
+        beatInterval = 60000L / bpm;
 #endif
-        
-        
         
         //Set current arp notes
         int16_t arpIndex = arpEncoder.getValue() / 4;
@@ -269,25 +268,42 @@ void checkMidi(){
 
 #if EXT_CLOCK
     // EXTERNAL CLOCK
-    if (usbMIDI.read() && usbMIDI.getType() == 8){   // Respond to clock signal
-        clockPulse++;
-        if (clockPulse > 96) {   //MIDI clock sends 64 pulses per note
-            clockPulse = 1;
-        }
-        else if ((clockPulse % QUANT_PULSE) == 0){
-            for (uint8_t i=0; i < N_BUTTONS; i++) {
-                if (pressedButtonIndex[i]) {
-                    playArp(i);
-                }
-            }
-        }
-    }
+    usbMIDI.read(CHANNEL);
     
 #else
     // INTERNAL CLOCK
-    while(usbMIDI.read()); // Discard incoming MIDI messages
+    while(usbMIDI.read(CHANNEL)); // Discard incoming MIDI messages
 
 #endif
+    
+}
+
+
+void handleRealTimeSystem(uint8_t data){
+    
+    if (data == 0xF8) {      // Clock pulse
+        
+        clockPulse++;
+        if (clockPulse > 96) {   //MIDI clock sends 24 pulses per quarter note
+            clockPulse = 1;
+        }
+        else if ((clockPulse % QUANT_PULSE) == 0){
+            respondToPresses();
+        }
+    }
+    
+    else if (data == 0xFA){  // START message
+        clockPulse = 0;
+    }
+    
+//    else if (data == 0xFC){  // STOP message
+//
+//    }
+    
+//    else if (data == 0xFB){  // CONTINUE message
+//
+//
+//    }
     
 }
 
@@ -333,7 +349,32 @@ void writePitchMap(){
 }
 
 
-void playArp(uint8_t buttonIndex) {
+void respondToPresses(){
+    
+    for (uint8_t i=0; i < N_BUTTONS; i++) {
+        if (pressedButtonIndex[i]) {
+            playArp(i);
+        }
+    }
+    
+}
+
+
+void setAllLEDs(bool lit){
+    
+    for (uint8_t i=0; i < N_BUTTONS; i++) {
+        if (lit) {
+            oontz.setLED(i);
+        }
+        else{
+            oontz.clrLED(i);
+        }
+    }
+    
+}
+
+
+void playArp(uint8_t buttonIndex){
     
     uint8_t seqIndex, seqButtonIndex, seqNote,
             x, y;
@@ -372,6 +413,17 @@ void playArp(uint8_t buttonIndex) {
 }
 
 
+void stopAll(){
+    
+    for (uint8_t i=0; i < N_BUTTONS; i++) {
+        if (pressedButtonIndex[i]) {
+            stopArp(i);
+        }
+    }
+    
+}
+
+
 void stopArp(uint8_t button){
     
     //stop playing the note
@@ -403,9 +455,9 @@ uint8_t findNoteFromXY(uint8_t x, uint8_t y){
 void playNoteForButton(uint8_t buttonIndex){
     
   // Set a random velocity
-  uint8_t vel = random(arpVelocityMin, arpVelocityMax);
+//  uint8_t vel = random(arpVelocityMin, arpVelocityMax);
   
-    usbMIDI.sendNoteOn(findNoteFromIndex(buttonIndex), vel, CHANNEL);
+    usbMIDI.sendNoteOn(findNoteFromIndex(buttonIndex), 100, CHANNEL);   //default velocity of 100
     oontz.setLED(buttonIndex);
     
 }
@@ -415,18 +467,6 @@ void stopNoteForButton(uint8_t buttonIndex){
     
     usbMIDI.sendNoteOff(findNoteFromIndex(buttonIndex), 0, CHANNEL);
     oontz.clrLED(buttonIndex);
-    
-}
-
-
-void flashDebug(uint8_t count){
-    
-    for (uint8_t f = 0; f < count; f++) {
-        digitalWrite(LED, HIGH);
-        delay(200);
-        digitalWrite(LED, LOW);
-        delay(200);
-    }
     
 }
 
