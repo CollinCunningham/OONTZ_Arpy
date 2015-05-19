@@ -153,12 +153,12 @@ void setup(){
     
     // 8x8
     if (WIDTH <= 8) {
-        untz.begin(addr[0], addr[1], addr[2], addr[3]);
+        untztrument.begin(addr[0], addr[1], addr[2], addr[3]);
     }
     
     // HELLA 16x8
     else{
-        untz.begin(addr[0], addr[1], addr[2], addr[3],
+        untztrument.begin(addr[0], addr[1], addr[2], addr[3],
                     addr[4], addr[5], addr[6], addr[7]);
     }
     
@@ -169,8 +169,8 @@ void setup(){
     // comment this out, or save & restore value as needed.
     TWBR = 12;
 #endif
-    untz.clear();
-    untz.writeDisplay();
+    untztrument.clear();
+    untztrument.writeDisplay();
     
 #if EXT_CLOCK
     // Set up tempo encoder for External clock mode
@@ -209,19 +209,19 @@ void loop(){
     
     if(tDiff >= 20L) { // 20ms = min Trellis poll time
         
-        if(untz.readSwitches()) {  // Button state change?
+        if(untztrument.readSwitches()) {  // Button state change?
             
             for(uint8_t i=0; i<N_BUTTONS; i++) { // For each button...
                 
                 //Button was pressed
-                if(untz.justPressed(i)) {
+                if(untztrument.justPressed(i)) {
                     
                     //add note to pressed buttons array
                     pressedButtonIndex[i] = true;
                 }
                 
                 //Button was released
-                else if(untz.justReleased(i)) {
+                else if(untztrument.justReleased(i)) {
                     
                     //remove note from pressed buttons array
                     pressedButtonIndex[i] = false;
@@ -254,7 +254,7 @@ void loop(){
         arp = &(*arpCollection)[arpIndex];
         
         //update LEDs
-        untz.writeDisplay();
+        untztrument.writeDisplay();
         
         prevReadTime = t;
         digitalWrite(LED, ++heart & 32); // Blink = alive
@@ -334,14 +334,14 @@ void writePitchMap(){
 //        if (x >= WIDTH){ x = 0; y++; }
 //        if (y >= HEIGHT) { break; }
 //        
-//        uint8_t index = untz.xy2i(x,y);
+//        uint8_t index = untztrument.xy2i(x,y);
 //        
 //        playNoteForButton(index);
 //        delay(200);
-//        untz.writeDisplay();
+//        untztrument.writeDisplay();
 //        delay(20);
 //        stopNoteForButton(index);
-//        untz.writeDisplay();
+//        untztrument.writeDisplay();
 //        
 //        x++;
 //    }
@@ -364,10 +364,10 @@ void setAllLEDs(bool lit){
     
     for (uint8_t i=0; i < N_BUTTONS; i++) {
         if (lit) {
-            untz.setLED(i);
+            untztrument.setLED(i);
         }
         else{
-            untz.clrLED(i);
+            untztrument.clrLED(i);
         }
     }
     
@@ -386,7 +386,7 @@ void playArp(uint8_t buttonIndex){
     }
     
     // Find current button coordinates
-    untz.i2xy(buttonIndex, &x, &y);
+    untztrument.i2xy(buttonIndex, &x, &y);
     
     // Add note offsets
     x = (int8_t)x + (*arp)[seqIndex][0];
@@ -398,7 +398,7 @@ void playArp(uint8_t buttonIndex){
     
     // Find new note and index
     seqNote = findNoteFromXY(x, y);
-    seqButtonIndex = untz.xy2i(x, y);
+    seqButtonIndex = untztrument.xy2i(x, y);
     
     // Stop prev note in sequence
     stopNoteForButton(arpButtonIndex[buttonIndex]);
@@ -438,7 +438,7 @@ void stopArp(uint8_t button){
 uint8_t findNoteFromIndex(uint8_t buttonIndex){
     
     uint8_t x, y;
-    untz.i2xy(buttonIndex, &x, &y);
+    untztrument.i2xy(buttonIndex, &x, &y);
     
     return findNoteFromXY(x,y);
     
@@ -458,7 +458,7 @@ void playNoteForButton(uint8_t buttonIndex){
 //  uint8_t vel = random(arpVelocityMin, arpVelocityMax);
   
     usbMIDI.sendNoteOn(findNoteFromIndex(buttonIndex), 100, CHANNEL);   //default velocity of 100
-    untz.setLED(buttonIndex);
+    untztrument.setLED(buttonIndex);
     
 }
 
@@ -466,7 +466,6 @@ void playNoteForButton(uint8_t buttonIndex){
 void stopNoteForButton(uint8_t buttonIndex){
     
     usbMIDI.sendNoteOff(findNoteFromIndex(buttonIndex), 0, CHANNEL);
-    untz.clrLED(buttonIndex);
+    untztrument.clrLED(buttonIndex);
     
 }
-
