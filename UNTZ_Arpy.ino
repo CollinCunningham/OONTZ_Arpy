@@ -19,8 +19,8 @@ void setup();   // Added to avoid Arduino IDE #ifdef bug
 
 #define LED       13 // Pin for heartbeat LED (shows code is working)
 #define CHANNEL   1  // MIDI channel number
-#define HELLA     1  // 0 for standard UNTZ, 1 for HELLA UNTZ
-#define EXT_CLOCK 1  // 0 for internal clock, 1 for external
+#define HELLA     0  // 0 for standard UNTZ, 1 for HELLA UNTZ
+#define EXT_CLOCK 0  // 0 for internal clock, 1 for external
 
 #if HELLA
 Adafruit_Trellis T[8];
