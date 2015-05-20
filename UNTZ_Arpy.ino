@@ -1,8 +1,8 @@
-// OONTZ ARPY
-// Arpeggiator for the Adafruit OONTZ & HELLA OONTZ
+// UNTZ ARPY
+// Arpeggiator for the Adafruit UNTZ & HELLA UNTZ
 // Plays a MIDI note sequence relative to button pressed
 //
-// For HELLA OONTZ change HELLA value to 1 (line 20)
+// For HELLA UNTZ change HELLA value to 1 (line 20)
 // For external MIDI clock sync change EXT_CLOCK value to 1 (line 21)
 // Scale can be chosen by specifying a mode on line 129
 //
@@ -15,22 +15,22 @@ void setup();   // Added to avoid Arduino IDE #ifdef bug
 
 #include <Wire.h>
 #include <Adafruit_Trellis.h>
-#include <Adafruit_OONTZ.h>
+#include <Adafruit_UNTZtrument.h>
 
 #define LED       13 // Pin for heartbeat LED (shows code is working)
 #define CHANNEL   1  // MIDI channel number
-#define HELLA     1  // 0 for standard OONTZ, 1 for HELLA OONTZ
-#define EXT_CLOCK 1  // 0 for internal clock, 1 for external
+#define HELLA     0  // 0 for standard UNTZ, 1 for HELLA UNTZ
+#define EXT_CLOCK 0  // 0 for internal clock, 1 for external
 
 #if HELLA
 Adafruit_Trellis T[8];
-OONTZ            oontz(&T[0], &T[1], &T[2], &T[3],
-                       &T[4], &T[5], &T[6], &T[7]);
+Adafruit_UNTZtrument   untztrument(&T[0], &T[1], &T[2], &T[3],
+                                   &T[4], &T[5], &T[6], &T[7]);
 const uint8_t    addr[] = { 0x70, 0x71, 0x72, 0x73,
                             0x74, 0x75, 0x76, 0x77 };
 #else
 Adafruit_Trellis T[4];
-OONTZ            oontz(&T[0], &T[1], &T[2], &T[3]);
+Adafruit_UNTZtrument   untztrument(&T[0], &T[1], &T[2], &T[3]);
 const uint8_t    addr[] = { 0x70, 0x71,
                             0x72, 0x73 };
 #endif
@@ -153,12 +153,12 @@ void setup(){
     
     // 8x8
     if (WIDTH <= 8) {
-        oontz.begin(addr[0], addr[1], addr[2], addr[3]);
+        untztrument.begin(addr[0], addr[1], addr[2], addr[3]);
     }
     
     // HELLA 16x8
     else{
-        oontz.begin(addr[0], addr[1], addr[2], addr[3],
+        untztrument.begin(addr[0], addr[1], addr[2], addr[3],
                     addr[4], addr[5], addr[6], addr[7]);
     }
     
@@ -169,8 +169,8 @@ void setup(){
     // comment this out, or save & restore value as needed.
     TWBR = 12;
 #endif
-    oontz.clear();
-    oontz.writeDisplay();
+    untztrument.clear();
+    untztrument.writeDisplay();
     
 #if EXT_CLOCK
     // Set up tempo encoder for External clock mode
@@ -209,19 +209,19 @@ void loop(){
     
     if(tDiff >= 20L) { // 20ms = min Trellis poll time
         
-        if(oontz.readSwitches()) {  // Button state change?
+        if(untztrument.readSwitches()) {  // Button state change?
             
             for(uint8_t i=0; i<N_BUTTONS; i++) { // For each button...
                 
                 //Button was pressed
-                if(oontz.justPressed(i)) {
+                if(untztrument.justPressed(i)) {
                     
                     //add note to pressed buttons array
                     pressedButtonIndex[i] = true;
                 }
                 
                 //Button was released
-                else if(oontz.justReleased(i)) {
+                else if(untztrument.justReleased(i)) {
                     
                     //remove note from pressed buttons array
                     pressedButtonIndex[i] = false;
@@ -254,7 +254,7 @@ void loop(){
         arp = &(*arpCollection)[arpIndex];
         
         //update LEDs
-        oontz.writeDisplay();
+        untztrument.writeDisplay();
         
         prevReadTime = t;
         digitalWrite(LED, ++heart & 32); // Blink = alive
@@ -334,14 +334,14 @@ void writePitchMap(){
 //        if (x >= WIDTH){ x = 0; y++; }
 //        if (y >= HEIGHT) { break; }
 //        
-//        uint8_t index = oontz.xy2i(x,y);
+//        uint8_t index = untztrument.xy2i(x,y);
 //        
 //        playNoteForButton(index);
 //        delay(200);
-//        oontz.writeDisplay();
+//        untztrument.writeDisplay();
 //        delay(20);
 //        stopNoteForButton(index);
-//        oontz.writeDisplay();
+//        untztrument.writeDisplay();
 //        
 //        x++;
 //    }
@@ -364,10 +364,10 @@ void setAllLEDs(bool lit){
     
     for (uint8_t i=0; i < N_BUTTONS; i++) {
         if (lit) {
-            oontz.setLED(i);
+            untztrument.setLED(i);
         }
         else{
-            oontz.clrLED(i);
+            untztrument.clrLED(i);
         }
     }
     
@@ -386,7 +386,7 @@ void playArp(uint8_t buttonIndex){
     }
     
     // Find current button coordinates
-    oontz.i2xy(buttonIndex, &x, &y);
+    untztrument.i2xy(buttonIndex, &x, &y);
     
     // Add note offsets
     x = (int8_t)x + (*arp)[seqIndex][0];
@@ -398,7 +398,7 @@ void playArp(uint8_t buttonIndex){
     
     // Find new note and index
     seqNote = findNoteFromXY(x, y);
-    seqButtonIndex = oontz.xy2i(x, y);
+    seqButtonIndex = untztrument.xy2i(x, y);
     
     // Stop prev note in sequence
     stopNoteForButton(arpButtonIndex[buttonIndex]);
@@ -438,7 +438,7 @@ void stopArp(uint8_t button){
 uint8_t findNoteFromIndex(uint8_t buttonIndex){
     
     uint8_t x, y;
-    oontz.i2xy(buttonIndex, &x, &y);
+    untztrument.i2xy(buttonIndex, &x, &y);
     
     return findNoteFromXY(x,y);
     
@@ -458,7 +458,7 @@ void playNoteForButton(uint8_t buttonIndex){
 //  uint8_t vel = random(arpVelocityMin, arpVelocityMax);
   
     usbMIDI.sendNoteOn(findNoteFromIndex(buttonIndex), 100, CHANNEL);   //default velocity of 100
-    oontz.setLED(buttonIndex);
+    untztrument.setLED(buttonIndex);
     
 }
 
@@ -466,7 +466,6 @@ void playNoteForButton(uint8_t buttonIndex){
 void stopNoteForButton(uint8_t buttonIndex){
     
     usbMIDI.sendNoteOff(findNoteFromIndex(buttonIndex), 0, CHANNEL);
-    oontz.clrLED(buttonIndex);
+    untztrument.clrLED(buttonIndex);
     
 }
-
